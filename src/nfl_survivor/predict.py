@@ -29,6 +29,35 @@ def current_week(df: pd.DataFrame, season: int) -> int:
     return int(untouched.min()) if len(untouched) else int(s["week"].max()) + 1
 
 
+def sanity_check(rest: pd.DataFrame, week: int) -> dict:
+    """Refuse to emit a plan built on a half-built schedule.
+
+    This exists because of a real failure: outputs were once committed from a
+    snapshot where one week-3 game was missing its line, which dropped the
+    best pick in the league out of the candidate set entirely and silently
+    promoted the second-best team. Nothing crashed and nothing looked wrong —
+    the table was simply answering a different question.
+
+    Cheap structural facts catch it. A regular-season week is 13-16 games, and
+    no team plays twice in one.
+    """
+    wk = rest[rest["week"] == week]
+    n_games = len(wk)
+    if not 13 <= n_games <= 16:
+        raise ValueError(f"week {week} has {n_games} games; expected 13-16. "
+                         "The schedule is probably half-downloaded — "
+                         "re-run `make data --force && make features`.")
+    sides = pd.concat([wk["home_team"], wk["away_team"]])
+    dupes = sides[sides.duplicated()].tolist()
+    if dupes:
+        raise ValueError(f"team(s) {dupes} appear twice in week {week}")
+    return {
+        "games": n_games,
+        "with_line": int(wk["market_spread"].notna().sum()),
+        "teams": int(sides.nunique()),
+    }
+
+
 def project(season: int = C.CURRENT_SEASON, df: pd.DataFrame | None = None,
             week: int | None = None):
     if df is None:
@@ -72,7 +101,10 @@ def main() -> None:
     df = pd.read_parquet(C.DATA_PROC / "games_features.parquet")
     fitted, week, rest = project(args.season, df, args.week)
 
+    stamp = sanity_check(rest, week)
     print(f"season {args.season}, planning from week {week}")
+    print(f"  week {week}: {stamp['games']} games, {stamp['teams']} teams, "
+          f"{stamp['with_line']} with a posted line")
     print(f"  {len(rest)} games remaining; "
           f"{(rest['source'] == 'market').sum()} priced by the market, "
           f"{(rest['source'] == 'ratings').sum()} by the ratings model")
@@ -98,6 +130,15 @@ def main() -> None:
     naive.to_csv(C.OUTPUTS / "pick_plan_greedy.csv", index=False)
     rest[["game_id", "season", "week", "home_team", "away_team",
           "p_home", "source"]].to_csv(C.OUTPUTS / "game_probabilities.csv", index=False)
+
+    # A visible fingerprint of the data these outputs came from, so a stale
+    # commit shows up as a diff instead of hiding as plausible numbers.
+    played = int(df[(df["season"] == args.season) & df[F.TARGET].notna()].shape[0])
+    (C.OUTPUTS / "run_stamp.txt").write_text(
+        f"season {args.season}\nplanning week {week}\n"
+        f"games played {played}\nweek {week} games {stamp['games']}\n"
+        f"week {week} with line {stamp['with_line']}\n"
+        f"market sd {fitted.market.sd:.3f}\n")
 
     print()
     print("RECOMMENDED PICKS  (alternatives show the season-survival cost of switching)")

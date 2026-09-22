@@ -19,6 +19,39 @@ which week — and the headline finding is a negative one, so it leads:
 > So the machine learning here is not pointed at beating the market. It is
 > pointed at the **82% of the schedule the market has not priced yet.**
 
+## The plan — every week, right now
+
+Season 2026, planning from week 3. Regenerate any time with `make predict`.
+
+| Wk | Pick | Opponent | Win % | Priced by | Still alive | Next best (cost) |
+|---:|---|---|---:|:---:|---:|---|
+| 3 | **KC** | at MIA | 84% | line | 84.3% | SF 77% (-15.2%) |
+| 4 | **BAL** | vs TEN | 77% | model | 64.9% | SEA 75% (-5.6%) |
+| 5 | **NE** | vs LV | 72% | model | 46.8% | PIT 68% (-0.4%) |
+| 6 | **SF** | vs WAS | 72% | model | 33.6% | LA 66% (-1.5%) |
+| 7 | **MIN** | vs IND | 73% | model | 24.5% | PHI 65% (-5.2%) |
+| 8 | **CIN** | vs TEN | 73% | model | 18.0% | GB 64% (-15.6%) |
+| 9 | **SEA** | vs ARI | 72% | model | 13.0% | CHI 63% (-9.3%) |
+| 10 | **BUF** | at NYJ | 66% | model | 8.6% | LA 59% (-7.3%) |
+| 11 | **DAL** | vs TEN | 66% | model | 5.7% | CHI 65% (-2.5%) |
+| 12 | **JAX** | vs TEN | 71% | model | 4.0% | CLE 60% (-8.1%) |
+| 13 | **DEN** | vs MIA | 68% | model | 2.7% | PHI 58% (-14.7%) |
+| 14 | **DET** | vs TEN | 69% | model | 1.9% | PHI 61% (-8.8%) |
+| 15 | **GB** | vs MIA | 62% | model | 1.2% | ARI 61% (-2.5%) |
+| 16 | **LV** | vs TEN | 59% | model | 0.7% | PHI 57% (-4.5%) |
+| 17 | **PIT** | at TEN | 58% | model | 0.4% | ARI 55% (-6.1%) |
+| 18 | **HOU** | vs TEN | 64% | model | 0.3% | PHI 55% (-14.2%) |
+
+`Priced by` says whether a real sportsbook line backs the number or the model
+produced it alone — **14 of 240 remaining games have a posted line**, so most of
+this table is the model talking to itself. `Next best` is the runner-up and what
+taking it costs you in whole-season survival, which includes burning that team
+early, not just this week's extra risk.
+
+Weeks 5, 6 and 11 cost under 3% to change. That is where your own read — an
+injury, a pool-popularity hunch — should beat the plan. Weeks 3, 8 and 13 cost
+15% or more; don't get clever there.
+
 ## Survivor is two problems
 
 ```mermaid
@@ -65,16 +98,12 @@ Maximising survival is `max Π p(team_w, w)` = `max Σ log p(team_w, w)` with ea
 team used at most once. Logs turn the product into a sum, which makes it exact
 linear assignment — Hungarian, milliseconds, no heuristics. On the 2026 schedule:
 
-```
-season survival, optimal: 0.0026        THIS WEEK (3)
-season survival, greedy : 0.0023        KC at MIA — 84.3%
-optimiser edge          : +10.4%        next best SF 77% (−15.2%)
-```
+Across the plan above that is worth **+10.4%** season survival over the greedy
+best-available strategy (0.0026 against 0.0023). Both numbers are small because
+surviving sixteen straight weeks is genuinely improbable for anyone.
 
 `recommend.py` prices every runner-up by forcing that pick and re-solving the
-rest of the season, so the cost includes burning that team early — not just this
-week's risk. Weeks where that cost is near zero are where your own read should
-override the plan.
+rest of the season, which is where the `Next best` column comes from.
 
 ## Usage
 
