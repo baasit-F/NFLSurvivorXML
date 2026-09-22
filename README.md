@@ -3,6 +3,10 @@
 An NFL survivor-pool planner: pick one team to win each week, never reuse a
 team, and stay alive to week 18.
 
+**[Open the board →](https://baasit-F.github.io/NFLSurvivorXML/)** — every
+remaining game priced, filterable by week, team, and whether a real line backs
+the number.
+
 The headline finding is a negative one, and the repo is built around it rather
 than around hiding it.
 
@@ -157,8 +161,14 @@ make features   # build the game-level design matrix
 make backtest   # walk-forward evaluation against the closing line
 make predict    # project the live season, solve the pick plan
 make pool       # Monte Carlo the plan against a simulated field
+make export     # refresh the board's data
 make test
 ```
+
+The board is a static page under `docs/`, served by GitHub Pages from `main`.
+`make export` regenerates `docs/data.js`; the page reads it as a plain script
+rather than fetching JSON so it opens identically from a local checkout and
+from Pages.
 
 Mid-season, tell it which teams you have already spent:
 
@@ -179,6 +189,7 @@ PYTHONPATH=. python3 -m src.nfl_survivor.predict --used KC,BAL,SF --horizon 8
 | `pool.py` | Monte Carlo against a simulated field |
 | `recommend.py` | runners-up for each week, priced by what switching costs |
 | `predict.py` | fit, project, and emit the pick plan |
+| `export.py` | write `docs/data.js` for the board |
 
 Data sources and the leakage argument: [`docs/DATA.md`](docs/DATA.md).
 

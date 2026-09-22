@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Survivor Board</title>
+<meta name="description" content="Win probabilities for every remaining NFL game, and the pick plan that survives longest.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#0C1110; --surface:#141B19; --raised:#1B2421; --line:#26332F;
+  --ink:#E9EFEB; --muted:#8CA099; --faint:#5E7169;
+  --accent:#F2A63B; --pick:#5FC9E8; --warn:#E06C4F;
+  --heat-lo:#222A28; --heat-hi:#F2A63B; --heat-ink:#0C1110;
+  --display:"Barlow Condensed",Haettenschweiler,"Arial Narrow",sans-serif;
+  --body:"Barlow","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:3px;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --ground:#EFF2F1; --surface:#FFFFFF; --raised:#F5F7F6; --line:#D3DAD7;
+    --faint:#869790; --accent:#9A6210; --pick:#0E7490; --warn:#B23C1E;
+    --heat-lo:#E4E8E6; --heat-hi:#C9821C; --heat-ink:#FFFFFF;
+  }
+}
+:root[data-theme="light"]{
+  --ground:#EFF2F1; --surface:#FFFFFF; --raised:#F5F7F6; --line:#D3DAD7;
+  --ink:#0F1614; --muted:#5A6B64; --faint:#869790;
+  --accent:#9A6210; --pick:#0E7490; --warn:#B23C1E;
+  --heat-lo:#E4E8E6; --heat-hi:#C9821C; --heat-ink:#FFFFFF;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px 72px}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--pick);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---- masthead ---------------------------------------------------- */
+header{border-bottom:1px solid var(--line);margin-bottom:22px}
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 28px;padding:26px 0 18px}
+h1{font-family:var(--display);font-size:40px;font-weight:700;letter-spacing:.01em;
+  margin:0;line-height:.95;text-transform:uppercase}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);font-size:13.5px;max-width:52ch;margin:6px 0 0}
+.stamp{margin-left:auto;text-align:right;font-family:var(--mono);font-size:11px;
+  color:var(--faint);line-height:1.7;text-transform:uppercase;letter-spacing:.06em}
+.theme{background:none;border:1px solid var(--line);color:var(--muted);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;padding:4px 9px;
+  border-radius:var(--r);cursor:pointer;text-transform:uppercase}
+.theme:hover{color:var(--ink);border-color:var(--muted)}
+
+/* ---- the call ---------------------------------------------------- */
+.call{display:grid;grid-template-columns:auto 1fr;gap:0 26px;align-items:center;
+  background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--pick);
+  border-radius:var(--r);padding:18px 22px;margin-bottom:26px}
+.call .wk{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+  color:var(--pick);text-transform:uppercase}
+.call .team{font-family:var(--display);font-size:56px;font-weight:700;line-height:.88;
+  letter-spacing:.01em}
+.call .vs{font-family:var(--display);font-size:19px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.04em;margin-top:4px}
+.call .num{font-family:var(--mono);font-size:34px;font-weight:600;
+  font-variant-numeric:tabular-nums;color:var(--pick)}
+.call .note{color:var(--muted);font-size:13px;margin-top:5px;max-width:46ch}
+
+/* ---- controls ---------------------------------------------------- */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);
+  font-family:var(--display);font-size:17px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.05em;padding:8px 15px;cursor:pointer;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.filters{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end;
+  padding:13px 16px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r);margin-bottom:18px}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  color:var(--faint);text-transform:uppercase}
+select,input[type=search]{background:var(--raised);border:1px solid var(--line);
+  color:var(--ink);font-family:var(--body);font-size:13.5px;padding:5px 8px;
+  border-radius:var(--r);min-width:120px}
+input[type=range]{width:132px;accent-color:var(--accent)}
+.val{font-family:var(--mono);font-size:12px;color:var(--accent);
+  font-variant-numeric:tabular-nums}
+.reset{margin-left:auto}
+
+/* ---- board ------------------------------------------------------- */
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 9px;border-bottom:1px solid var(--line);
+  white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--raised);font-family:var(--mono);
+  font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+  font-weight:500;z-index:2}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--raised)}
+.num,.pct{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+
+.board{border-collapse:separate;border-spacing:2px;font-family:var(--mono);font-size:11px}
+.board th{background:none;border:0;padding:3px 5px;position:static}
+.board thead th{font-size:10px;color:var(--faint);text-align:center;letter-spacing:.06em}
+.board td{border:0;padding:0}
+.board .tm{font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:.03em;
+  color:var(--ink);text-align:left;padding-right:10px;position:sticky;left:0;
+  background:var(--surface);z-index:1;min-width:52px}
+.board .tm small{display:block;font-family:var(--mono);font-size:9.5px;font-weight:400;
+  color:var(--faint);letter-spacing:.04em}
+.cell{display:flex;align-items:center;justify-content:center;height:27px;width:100%;
+  min-width:44px;border-radius:2px;font-variant-numeric:tabular-nums;font-weight:500;
+  background:color-mix(in oklab,var(--heat-lo),var(--heat-hi) calc(var(--t,0) * 100%));
+  color:var(--ink);cursor:default;border:1px solid transparent}
+.cell.hot{color:var(--heat-ink)}
+.cell.bye{background:none;color:var(--faint);font-size:10px;letter-spacing:.06em}
+.cell.done{background:none;border:1px solid var(--line);font-size:10px}
+.cell.done.won{color:var(--accent);border-color:color-mix(in oklab,var(--accent),transparent 55%)}
+.cell.done.lost{color:var(--faint)}
+.cell.dim{opacity:.16}
+.cell.mypick{border-color:var(--pick);box-shadow:0 0 0 1px var(--pick)}
+.row-off .tm{opacity:.32}
+
+/* ---- plan -------------------------------------------------------- */
+.plan{display:flex;flex-direction:column;gap:2px}
+.pw{display:grid;grid-template-columns:44px 74px 1fr 78px 92px;gap:16px;align-items:center;
+  padding:11px 16px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r)}
+.pw.now{border-left:3px solid var(--pick);padding-left:13px}
+.pw .w{font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.08em}
+.pw .t{font-family:var(--display);font-size:25px;font-weight:700;line-height:1}
+.pw .o{color:var(--muted);font-size:13px}
+.pw .alts{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:2px}
+.pw .alts b{color:var(--muted);font-weight:500}
+.pw .p{font-family:var(--mono);font-size:19px;font-weight:600;text-align:right;
+  font-variant-numeric:tabular-nums}
+.pw .cum{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;
+  font-variant-numeric:tabular-nums}
+.pw .cum b{display:block;color:var(--muted);font-size:13px;font-weight:500}
+.tag{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;
+  padding:2px 5px;border-radius:2px;border:1px solid var(--line);color:var(--faint)}
+.tag.market{color:var(--accent);border-color:color-mix(in oklab,var(--accent),transparent 60%)}
+.tag.lock{color:var(--pick);border-color:color-mix(in oklab,var(--pick),transparent 60%)}
+
+/* ---- misc -------------------------------------------------------- */
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;margin:12px 2px 0;
+  font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.05em}
+.ramp{display:flex;gap:2px}
+.ramp i{width:17px;height:10px;border-radius:1px;
+  background:color-mix(in oklab,var(--heat-lo),var(--heat-hi) calc(var(--t) * 100%))}
+.caveat{border:1px solid var(--line);border-left:3px solid var(--warn);
+  background:var(--surface);border-radius:var(--r);padding:14px 18px;margin-top:22px}
+.caveat h3{font-family:var(--display);font-size:16px;text-transform:uppercase;
+  letter-spacing:.05em;margin:0 0 5px;color:var(--warn)}
+.caveat p{margin:0 0 7px;font-size:13.5px;color:var(--muted);max-width:74ch}
+.caveat p:last-child{margin-bottom:0}
+.caveat code{font-family:var(--mono);font-size:12px;color:var(--ink);
+  background:var(--raised);padding:1px 5px;border-radius:2px}
+.empty{padding:34px;text-align:center;color:var(--faint);font-family:var(--mono);font-size:12px}
+.hide{display:none!important}
+footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+  color:var(--faint);font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 18px}
+@media (max-width:720px){
+  h1{font-size:30px} .call{grid-template-columns:1fr;gap:12px}
+  .call .team{font-size:42px} .stamp{margin-left:0;text-align:left}
+  .pw{grid-template-columns:38px 1fr;gap:6px 12px}
+  .pw .p,.pw .cum{text-align:left}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="mast">
+    <div>
+      <h1>Survivor <span>Board</span></h1>
+      <p class="sub">Win probability for every remaining game, and the one pick order that
+        survives longest. Market prices where a line is posted; Elo and EPA everywhere else.</p>
+    </div>
+    <div class="stamp">
+      <div id="stamp-date"></div>
+      <div id="stamp-model"></div>
+      <button class="theme" id="theme" type="button">Theme</button>
+    </div>
+  </div>
+</header>
+
+<section class="call" id="call"></section>
+
+<div class="tabs" role="tablist">
+  <button class="tab" role="tab" data-view="board" aria-selected="true">Board</button>
+  <button class="tab" role="tab" data-view="plan" aria-selected="false">Pick plan</button>
+  <button class="tab" role="tab" data-view="games" aria-selected="false">Every game</button>
+  <button class="tab" role="tab" data-view="model" aria-selected="false">Model</button>
+</div>
+
+<div class="filters" id="filters">
+  <div class="f"><label for="f-week">Week</label>
+    <select id="f-week"><option value="">All remaining</option></select></div>
+  <div class="f"><label for="f-team">Team</label>
+    <select id="f-team"><option value="">Every team</option></select></div>
+  <div class="f"><label for="f-src">Priced by</label>
+    <select id="f-src">
+      <option value="">Either</option>
+      <option value="market">Market line</option>
+      <option value="ratings">Ratings model</option>
+    </select></div>
+  <div class="f"><label for="f-min">Min win probability <span class="val" id="f-min-v">50%</span></label>
+    <input type="range" id="f-min" min="50" max="90" step="1" value="50"></div>
+  <div class="f"><label for="f-used">Teams already spent</label>
+    <input type="search" id="f-used" placeholder="KC, BAL, SF" autocomplete="off"></div>
+  <div class="f reset"><label>&nbsp;</label>
+    <button class="theme" id="reset" type="button">Reset filters</button></div>
+</div>
+
+<section id="v-board">
+  <div class="scroll"><table class="board"><thead id="board-head"></thead><tbody id="board-body"></tbody></table></div>
+  <div class="legend">
+    <span>Win probability</span>
+    <span class="ramp" id="ramp"></span>
+    <span id="ramp-lo"></span><span id="ramp-hi"></span>
+    <span style="color:var(--pick)">▢ your planned pick</span>
+    <span style="color:var(--accent)">W / L &mdash; weeks already played</span>
+  </div>
+</section>
+
+<section id="v-plan" class="hide"><div class="plan" id="plan"></div></section>
+
+<section id="v-games" class="hide">
+  <div class="scroll"><table>
+    <thead><tr><th>Wk</th><th>Matchup</th><th class="pct">Away</th><th class="pct">Home</th>
+      <th class="pct">Spread</th><th>Priced by</th><th class="pct">Favourite</th></tr></thead>
+    <tbody id="games"></tbody></table></div>
+</section>
+
+<section id="v-model" class="hide">
+  <div class="scroll"><table>
+    <thead><tr><th>Method</th><th class="num">Games</th><th class="num">Log-loss</th>
+      <th class="num">Brier</th><th class="num">Accuracy</th></tr></thead>
+    <tbody id="backtest"></tbody></table></div>
+  <div class="caveat">
+    <h3>Read this before trusting a number</h3>
+    <p><b>The market is not beaten.</b> Boosted trees over ~40 features lose to the closing
+      spread on both log-loss and Brier across a 15-season walk-forward. Blending was tested at
+      every weight and zero was optimal, so where a line exists this board simply reports the
+      market. The modelling exists for the games the books have not priced.</p>
+    <p><b>Weeks 4&ndash;6 are the least reliable.</b> The ratings model scores Brier 0.2345 there
+      against 0.2135 in weeks 11&ndash;14 &mdash; early on, Elo is still mostly carrying last
+      season forward and over-reacting to two or three games of this one. Those cells deserve the
+      least confidence, which is the reverse of what their stated probabilities suggest.</p>
+    <p><b>Distant weeks are shrunk toward a coin flip</b> before the plan is solved, because every
+      historical game was predicted from the doorstep with the injury report known. Nothing in the
+      training data can teach a model how much less it knows in September about week 15.</p>
+  </div>
+</section>
+
+<div class="caveat" id="used-note" style="display:none">
+  <h3>Spent teams are dimmed, not re-solved</h3>
+  <p>This page filters. It does not re-run the optimiser &mdash; the plan below still assumes the
+    teams you just marked were available. For a true re-solve, run:
+    <code id="used-cmd"></code></p>
+</div>
+
+<footer>
+  <span>Data: <a href="https://github.com/nflverse/nflverse-data">nflverse</a>, CC-BY-4.0</span>
+  <span><a href="https://github.com/baasit-F/NFLSurvivorXML">Source on GitHub</a></span>
+  <span id="foot-gen"></span>
+</footer>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+"use strict";
+var D = window.SURVIVOR_DATA;
+if(!D){document.body.innerHTML='<p style="padding:40px;font-family:monospace">data.js failed to load &mdash; run <code>make export</code>.</p>';return;}
+
+var LO = 0.42, HI = 0.84;                 // heat ramp domain, set to
+                                          // where the games actually sit
+var t = function(p){ return Math.max(0, Math.min(1, (p - LO) / (HI - LO))); };
+var pct = function(p){ return p == null ? "—" : Math.round(p * 100) + "%"; };
+var $ = function(s){ return document.querySelector(s); };
+
+/* ---- index the games by week and team ---------------------------- */
+var cell = {};            // "team|week" -> {p, opp, source, home}
+var played = {};          // "team|week" -> "W"/"L"
+D.games.forEach(function(g){
+  cell[g.home + "|" + g.week] = {p:g.p_home, opp:"vs " + g.away, source:g.source, spread:g.spread};
+  cell[g.away + "|" + g.week] = {p:g.p_away, opp:"at " + g.home, source:g.source, spread:g.spread};
+});
+D.results.forEach(function(r){
+  if(!r.winner) return;
+  played[r.home + "|" + r.week] = r.winner === r.home ? "W" : "L";
+  played[r.away + "|" + r.week] = r.winner === r.away ? "W" : "L";
+});
+var planned = {};
+D.plan.forEach(function(p){ planned[p.team + "|" + p.week] = true; });
+
+var allWeeks = [];
+for(var w = 1; w <= 18; w++) allWeeks.push(w);
+
+/* ---- filter state ------------------------------------------------ */
+var S = {week:"", team:"", src:"", min:0.50, used:[]};
+
+function passes(team, week){
+  var c = cell[team + "|" + week];
+  if(!c) return false;
+  if(S.week && week !== +S.week) return false;
+  if(S.team && team !== S.team) return false;
+  if(S.src && c.source !== S.src) return false;
+  if(c.p < S.min) return false;
+  return true;
+}
+
+/* ---- the call ---------------------------------------------------- */
+function renderCall(){
+  var p = D.plan[0];
+  if(!p){ $("#call").innerHTML = '<div class="note">No weeks left to plan.</div>'; return; }
+  var edge = D.plan[0].alternatives[0];
+  $("#call").innerHTML =
+    '<div><div class="wk">Week ' + p.week + ' &mdash; take</div>' +
+    '<div class="team">' + p.team + '</div>' +
+    '<div class="vs">' + (p.opponent || "") + '</div></div>' +
+    '<div><div class="num">' + (p.p_win * 100).toFixed(1) + '% to win</div>' +
+    '<div class="note">' +
+      (edge ? 'Next best is ' + edge.team + ' at ' + pct(edge.p_win) + ', which costs ' +
+        Math.abs(edge.cost * 100).toFixed(1) + '% of season survival. ' : '') +
+      'Priced by ' + (p.source === "market" ? 'the closing line.' : 'the ratings model.') +
+    '</div></div>';
+}
+
+/* ---- board ------------------------------------------------------- */
+function renderBoard(){
+  var weeks = S.week ? [+S.week] : allWeeks;
+  var head = '<tr><th class="tm">Team</th>';
+  weeks.forEach(function(w){
+    head += '<th>' + (w < D.current_week ? w : w) + '</th>';
+  });
+  $("#board-head").innerHTML = head + '</tr>';
+
+  var teams = D.teams.slice().sort(function(a,b){ return (D.elo[b]||0) - (D.elo[a]||0); });
+  var rows = "", shown = 0;
+  teams.forEach(function(tm){
+    if(S.team && tm !== S.team) return;
+    var spent = S.used.indexOf(tm) >= 0;
+    var any = false, tds = "";
+    weeks.forEach(function(w){
+      var res = played[tm + "|" + w], c = cell[tm + "|" + w];
+      if(res){
+        tds += '<td><div class="cell done ' + (res === "W" ? "won" : "lost") +
+               '" title="Week ' + w + ': ' + res + '">' + res + '</div></td>';
+      } else if(!c){
+        tds += '<td><div class="cell bye" title="Bye week">BYE</div></td>';
+      } else {
+        var ok = passes(tm, w); if(ok) any = true;
+        tds += '<td><div class="cell' + (c.p >= 0.70 ? " hot" : "") +
+               (ok && !spent ? "" : " dim") + (planned[tm + "|" + w] ? " mypick" : "") +
+               '" style="--t:' + t(c.p).toFixed(3) + '" title="Week ' + w + ' ' + tm + ' ' +
+               c.opp + ' — ' + pct(c.p) + ', ' + c.source +
+               (c.spread != null ? ", line " + c.spread : "") + '">' +
+               Math.round(c.p * 100) + '</div></td>';
+      }
+    });
+    if(!any && (S.team === "" )) { /* keep the row, dimmed, so the board keeps its shape */ }
+    shown += any ? 1 : 0;
+    rows += '<tr class="' + (any ? "" : "row-off") + '"><th class="tm">' + tm +
+            '<small>' + (D.elo[tm] != null ? D.elo[tm] : "") + '</small></th>' + tds + '</tr>';
+  });
+  $("#board-body").innerHTML = rows;
+}
+
+/* ---- plan -------------------------------------------------------- */
+function renderPlan(){
+  var html = "";
+  D.plan.forEach(function(p, i){
+    var spent = S.used.indexOf(p.team) >= 0;
+    if(S.week && p.week !== +S.week) return;
+    if(S.team && p.team !== S.team) return;
+    if(S.src && p.source !== S.src) return;
+    if(p.p_win < S.min) return;
+    var alts = p.alternatives.map(function(a){
+      return '<b>' + a.team + '</b> ' + pct(a.p_win) +
+             ' (' + (a.cost * 100).toFixed(1) + '%)';
+    }).join("  ·  ");
+    html +=
+      '<div class="pw' + (i === 0 ? " now" : "") + '"' + (spent ? ' style="opacity:.4"' : '') + '>' +
+      '<div class="w">WK ' + p.week + '</div>' +
+      '<div><div class="t">' + p.team + '</div>' +
+        '<span class="tag ' + (p.source === "market" ? "market" : "") + '">' + p.source + '</span></div>' +
+      '<div><div class="o">' + (p.opponent || "") + '</div>' +
+        '<div class="alts">' + (alts || "no alternative priced") + '</div></div>' +
+      '<div class="p">' + pct(p.p_win) + '</div>' +
+      '<div class="cum">still alive<b>' + (p.cum_survival * 100).toFixed(1) + '%</b></div>' +
+      '</div>';
+  });
+  $("#plan").innerHTML = html || '<div class="empty">No week matches these filters.</div>';
+}
+
+/* ---- games ------------------------------------------------------- */
+function renderGames(){
+  var rows = "", n = 0;
+  D.games.slice().sort(function(a,b){
+    return a.week - b.week || Math.max(b.p_home,b.p_away) - Math.max(a.p_home,a.p_away);
+  }).forEach(function(g){
+    var fav = g.p_home >= g.p_away ? g.home : g.away;
+    var favP = Math.max(g.p_home, g.p_away);
+    if(S.week && g.week !== +S.week) return;
+    if(S.team && g.home !== S.team && g.away !== S.team) return;
+    if(S.src && g.source !== S.src) return;
+    if(favP < S.min) return;
+    n++;
+    rows += '<tr><td class="num">' + g.week + '</td>' +
+      '<td>' + g.away + ' <span style="color:var(--faint)">at</span> ' + g.home + '</td>' +
+      '<td class="pct">' + pct(g.p_away) + '</td>' +
+      '<td class="pct">' + pct(g.p_home) + '</td>' +
+      '<td class="pct">' + (g.spread != null ? (g.spread > 0 ? "+" : "") + g.spread : "—") + '</td>' +
+      '<td><span class="tag ' + (g.source === "market" ? "market" : "") + '">' + g.source + '</span></td>' +
+      '<td class="pct" style="color:var(--accent)">' + fav + " " + pct(favP) + '</td></tr>';
+  });
+  $("#games").innerHTML = rows ||
+    '<tr><td colspan="7"><div class="empty">No game matches these filters.</div></td></tr>';
+}
+
+/* ---- model ------------------------------------------------------- */
+function renderModel(){
+  $("#backtest").innerHTML = D.backtest.map(function(r){
+    var star = r.method === "market_baseline";
+    return '<tr><td>' + r.method.replace(/_/g, " ") +
+      (star ? ' <span class="tag lock">benchmark</span>' : '') + '</td>' +
+      '<td class="num">' + r.games + '</td>' +
+      '<td class="num">' + r.log_loss.toFixed(4) + '</td>' +
+      '<td class="num">' + r.brier.toFixed(4) + '</td>' +
+      '<td class="num">' + (r.accuracy * 100).toFixed(1) + '%</td></tr>';
+  }).join("");
+}
+
+/* ---- chrome ------------------------------------------------------ */
+function renderAll(){ renderBoard(); renderPlan(); renderGames(); }
+
+function setUsed(){
+  var note = $("#used-note");
+  if(S.used.length){
+    note.style.display = "";
+    $("#used-cmd").textContent =
+      "python3 -m src.nfl_survivor.predict --used " + S.used.join(",");
+  } else { note.style.display = "none"; }
+}
+
+document.querySelectorAll(".tab").forEach(function(b){
+  b.addEventListener("click", function(){
+    document.querySelectorAll(".tab").forEach(function(x){ x.setAttribute("aria-selected","false"); });
+    b.setAttribute("aria-selected","true");
+    ["board","plan","games","model"].forEach(function(v){
+      $("#v-" + v).classList.toggle("hide", v !== b.dataset.view);
+    });
+    $("#filters").classList.toggle("hide", b.dataset.view === "model");
+  });
+});
+
+var wsel = $("#f-week");
+D.weeks.forEach(function(w){
+  wsel.insertAdjacentHTML("beforeend", '<option value="' + w + '">Week ' + w + '</option>');
+});
+var tsel = $("#f-team");
+D.teams.forEach(function(tm){
+  tsel.insertAdjacentHTML("beforeend", '<option value="' + tm + '">' + tm + '</option>');
+});
+
+wsel.addEventListener("change", function(){ S.week = this.value; renderAll(); });
+tsel.addEventListener("change", function(){ S.team = this.value; renderAll(); });
+$("#f-src").addEventListener("change", function(){ S.src = this.value; renderAll(); });
+$("#f-min").addEventListener("input", function(){
+  S.min = +this.value / 100; $("#f-min-v").textContent = this.value + "%"; renderAll();
+});
+$("#f-used").addEventListener("input", function(){
+  S.used = this.value.toUpperCase().split(/[,\s]+/).filter(Boolean);
+  setUsed(); renderAll();
+});
+$("#reset").addEventListener("click", function(){
+  S = {week:"", team:"", src:"", min:0.50, used:[]};
+  wsel.value = ""; tsel.value = ""; $("#f-src").value = "";
+  $("#f-min").value = 50; $("#f-min-v").textContent = "50%"; $("#f-used").value = "";
+  setUsed(); renderAll();
+});
+$("#theme").addEventListener("click", function(){
+  var cur = document.documentElement.getAttribute("data-theme");
+  var next = cur === "dark" ? "light" : cur === "light" ? "" : "dark";
+  if(next) document.documentElement.setAttribute("data-theme", next);
+  else document.documentElement.removeAttribute("data-theme");
+});
+
+$("#stamp-date").textContent = "Season " + D.season + " · planning week " + D.current_week;
+$("#stamp-model").textContent = D.games.length + " games priced · market sd " + D.market_sd;
+$("#foot-gen").textContent = "Generated " + D.generated;
+var ramp = "";
+[0,.2,.4,.6,.8,1].forEach(function(v){ ramp += '<i style="--t:' + v + '"></i>'; });
+$("#ramp").innerHTML = ramp;
+$("#ramp-lo").textContent = Math.round(LO * 100) + "%";
+$("#ramp-hi").textContent = Math.round(HI * 100) + "%+";
+
+renderCall(); renderModel(); renderAll();
+})();
+</script>
+</body>
+</html>

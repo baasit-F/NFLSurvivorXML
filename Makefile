@@ -1,8 +1,8 @@
 PY := PYTHONPATH="$(CURDIR)" python3
 
-.PHONY: all data features backtest predict pool test clean
+.PHONY: all data features backtest predict pool export test clean
 
-all: data features backtest predict
+all: data features backtest predict export
 
 data:      ## download nflverse source tables into data/raw
 	$(PY) -m src.nfl_survivor.ingest
@@ -18,6 +18,9 @@ predict:   ## project the live season and solve the pick plan
 
 pool:      ## Monte Carlo the pool for the current plan
 	$(PY) -m src.nfl_survivor.pool
+
+export:    ## refresh docs/data.js for the GitHub Pages board
+	$(PY) -m src.nfl_survivor.export
 
 test:
 	$(PY) -m pytest tests -q
