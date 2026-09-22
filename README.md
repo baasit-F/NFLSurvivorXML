@@ -100,6 +100,13 @@ optimiser edge          : +24.0%
 `tests/test_optimizer.py` checks the solver against exhaustive search on small
 grids, so that edge is a property of the method and not of one lucky schedule.
 
+`recommend.py` prices the runners-up: for every candidate team it forces that
+pick and re-solves the rest of the season, so `cost_vs_best` captures not just
+the extra risk this week but the knock-on cost of burning that team early. The
+weeks where that cost is near zero are the ones where your own information —
+an injury the ratings have not absorbed, a read on pool popularity — should
+override the plan.
+
 Distant weeks are shrunk toward a coin flip before solving. The model is
 calibrated on games about to kick off, where the injury report is known and the
 starting quarterback is not a guess; a week-15 probability computed in week 2
@@ -135,6 +142,11 @@ things would fix it, both listed below.
 - **Elo is team-level and slow.** It cannot see a team that just traded for a
   quarterback, and it takes weeks to catch a genuinely changed roster.
 - **Ties are graded as home losses.** Check your pool's rule; some push.
+- **The ratings head is weakest in weeks 4-6** (Brier 0.2345 against 0.2135 in
+  weeks 11-14). Early in the season Elo has absorbed two or three games of the
+  current roster and is still mostly carrying last year forward, so it
+  over-reacts to small samples. Those picks deserve the least confidence, which
+  is the opposite of what their stated probabilities suggest.
 
 ## Usage
 
@@ -165,6 +177,7 @@ PYTHONPATH=. python3 -m src.nfl_survivor.predict --used KC,BAL,SF --horizon 8
 | `backtest.py` | walk-forward evaluation, including the models that lost |
 | `optimize.py` | Hungarian assignment over the remaining schedule |
 | `pool.py` | Monte Carlo against a simulated field |
+| `recommend.py` | runners-up for each week, priced by what switching costs |
 | `predict.py` | fit, project, and emit the pick plan |
 
 Data sources and the leakage argument: [`docs/DATA.md`](docs/DATA.md).
