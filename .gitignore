@@ -1,0 +1,13 @@
+# Raw + intermediate data: reproducible with `make data && make features`
+data/raw/
+data/processed/
+
+# outputs/ IS committed — the README links to the charts and pick tables
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+.venv/
+venv/
